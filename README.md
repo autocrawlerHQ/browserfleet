@@ -1,191 +1,197 @@
 # Browsergrid
 
-> Easy browser infrastructure for automation, testing, and development
+> Browser automation infrastructure made simple
 
-Browsergrid is a powerful browser infrastructure platform that provides managed browser instances for automation, testing, and development. It offers a scalable, cloud-native solution for browser orchestration with flexible deployment options.
+Browsergrid provides ready-to-use browser instances for test automation, web scraping, and development workflows. Stop struggling with browser setup and focus on what matters - your code.
 
-## Features
+## Why Browsergrid?
 
-- **Multi-Browser Support**: Run Chrome, Firefox, Chromium, and WebKit sessions
-- **Browser Multiplexing**: Connect multiple clients to a single browser instance
-- **Dynamic Infrastructure**: Scale browser sessions on demand with work pools
-- **Webhook Integration**: Automate workflows based on browser events
-- **Containerized Deployment**: Run browser instances in Docker or cloud environments
-- **CDP Support**: Full Chrome DevTools Protocol compatibility
-- **API-First Design**: RESTful APIs for all functionality
+- **Eliminate Browser Headaches**: No more fighting with browser drivers, dependencies, or version conflicts
+- **Develop Faster**: Instantly provision browser environments that match your production needs
+- **Reduce CI Costs**: Save compute resources with efficient browser multiplexing
+- **Scale Seamlessly**: From local development to production deployment with the same API
 
-## Architecture
+## Quick Start
 
-Browsergrid follows a modular architecture:
+```bash
+# Install the client
+pip install browsergrid
 
-```
-┌─────────────┐     ┌────────────────────┐     ┌──────────────────┐
-│  Client API  │────▶│  Browsergrid Server │────▶│  Browser Workers │
-└─────────────┘     └────────────────────┘     └──────────────────┘
-                             │                          │
-                             ▼                          ▼
-                     ┌──────────────┐          ┌──────────────────┐
-                     │   Database   │          │ Browser Instances │
-                     └──────────────┘          └──────────────────┘
+# Start the server (uses Docker under the hood)
+browsergrid server start
+
+# Launch a Chrome session
+browsergrid session create --browser chrome
 ```
 
-## Key Components
+Boom! Now you have a fully configured Chrome instance ready for automation.
 
-### Browsergrid Server
+## Key Features
 
-The core API service providing endpoints for:
-- Session management
-- Work pool configuration
-- Worker registration and monitoring
-- Webhook management
+- **Multi-Browser Support**: Chrome, Firefox, Chromium, and WebKit
+- **Browser Multiplexing**: Connect multiple clients to one browser instance
+- **Dynamic Scaling**: Add/remove browser capacity on demand
+- **Webhook Triggers**: Automate workflows based on browser events
+- **Full CDP Support**: Works with Puppeteer, Playwright, and custom CDP tools
 
-### BrowserMux
+## Real-World Examples
 
-A Chrome DevTools Protocol (CDP) proxy that allows multiple clients to connect to a single browser instance, featuring:
-- CDP protocol compatibility
-- Real-time event streaming
-- Client connection management
-- WebSocket multiplexing
+### Web Testing with Playwright
 
-### Sessions
+```python
+from playwright.sync_api import sync_playwright
+from browsergrid.client import BrowsergridClient
 
-Managed browser instances with configurable options:
-- Browser type and version selection
-- Headless/headful mode
-- Resource limitations (CPU, memory, timeout)
-- Operating system selection
-- Network proxy configuration
-- Screen resolution settings
+# Start a browser session
+client = BrowsergridClient()
+session = client.create_session(browser="chrome")
 
-### Work Pools and Workers
+# Connect Playwright to the running browser
+with sync_playwright() as p:
+    browser = p.chromium.connect_over_cdp(session.endpoint_url)
+    page = browser.new_page()
+    page.goto("https://example.com")
+    page.screenshot(path="screenshot.png")
+    browser.close()
+```
 
-A dynamic infrastructure layer that enables:
-- On-demand browser session provisioning
-- Load balancing across workers
-- Pool-specific browser configurations
-- Workers that poll for and manage sessions
+### Web Scraping
 
-### Browser Support
+```python
+from browsergrid.client import BrowsergridClient
+import requests
 
-The following browsers are fully supported:
-- **Chrome**: Latest stable release
-- **Chromium**: Latest stable release
-- **Firefox**: Latest stable release
-- **WebKit**: Latest stable release
+# Start a browser with proxy support
+client = BrowsergridClient()
+session = client.create_session(
+    browser="chrome",
+    proxy="http://myproxy:8080",
+    headless=True
+)
 
-## Getting Started
+# Use the browser's CDP endpoint for scraping
+response = requests.post(
+    f"{session.endpoint_url}/json/new",
+    json={"url": "https://example.com"}
+)
+tab_info = response.json()
+# Continue with CDP commands...
+```
+
+## Installation
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Docker (for local server)
 - Python 3.8+
-- Make (optional, for using the Makefile)
 
-### Quick Start
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/galad-ca/browsergrid.git
-   cd browsergrid
-   ```
-
-2. Start the server:
-   ```bash
-   make server up
-   ```
-
-3. Start a browser instance:
-   ```bash
-   make browser BROWSER=chrome up
-   ```
-
-## Usage Examples
-
-### Launch a Browser Session
+### Install the Client
 
 ```bash
-curl -X POST "http://localhost:8765/v1/sessions" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key" \
-  -d '{
-    "browser": "chrome",
-    "version": "latest",
-    "headless": false,
-    "resource_limits": {"cpu": 1, "memory": "2G"}
-  }'
+pip install browsergrid
 ```
 
-### Create a Work Pool
+### Server Deployment Options
+
+#### Local Development (Easiest)
 
 ```bash
-python -m browsergrid.client.workerpool_cli create docker \
-  --name "my-docker-pool" \
-  --browser chrome \
-  --browser-version latest
+# Start server with default settings
+browsergrid server start
+
+# Or with custom configuration
+browsergrid server start --port 9000 --workers 5
 ```
 
-### Starting a Worker
+#### Docker Compose
+
+```yaml
+# docker-compose.yml
+version: '3'
+services:
+  browsergrid-server:
+    image: browsergrid/server:latest
+    ports:
+      - "8765:8765"
+    environment:
+      - API_KEY=your_secret_key
+      
+  chrome-worker:
+    image: browsergrid/worker:latest
+    depends_on:
+      - browsergrid-server
+    environment:
+      - BROWSER=chrome
+      - API_KEY=your_secret_key
+      - SERVER_URL=http://browsergrid-server:8765
+```
+
+#### Cloud Deployment
+
+See our [Cloud Deployment Guide](https://docs.browsergrid.com/deployment/cloud) for step-by-step instructions for AWS, GCP, and Azure.
+
+## Common Scenarios
+
+### Managing Browser Sessions
 
 ```bash
-python -m browsergrid.client.worker \
-  --api-url http://localhost:8765 \
-  --api-key your_api_key \
-  --work-pool-id your_work_pool_id
+# List all active sessions
+browsergrid session list
+
+# Get details for a specific session
+browsergrid session info SESSION_ID
+
+# Terminate a session
+browsergrid session terminate SESSION_ID
 ```
 
-## Deployment Options
-
-Browsergrid supports multiple deployment models:
-
-### Local Development
-- Run the server and browsers on your local machine
-- Great for development and testing
-
-### Docker Containers
-- Run each component in separate containers
-- Ideal for CI/CD pipelines and testing environments
-
-### Cloud Deployment
-- Deploy to Azure Container Instances
-- Scale based on demand
-- Easily extensible to other cloud providers
-
-## Webhook System
-
-Configurable webhooks that trigger on browser events:
-- Monitor page navigation events
-- React to network requests/responses
-- Capture console logs and errors
-- Process DOM mutations
-- Integrate with external systems and workflows
-
-## Development
-
-### Running Tests
+### Using Work Pools for Scaling
 
 ```bash
-pytest
+# Create a work pool for Chrome sessions
+browsergrid pool create --name "chrome-pool" --browser chrome
 
-# Run browser-specific tests
-pytest tests/browsers/
+# Add workers to the pool
+browsergrid worker add --pool "chrome-pool" --count 3
+
+# Monitor pool status
+browsergrid pool status "chrome-pool"
 ```
 
-### Building from Source
+## Troubleshooting
 
-1. Install development dependencies:
-   ```bash
-   pip install -e ".[dev]"
-   ```
+### Common Issues
 
-2. Build the project:
-   ```bash
-   make build
-   ```
+**Connection Refused**
+```
+Error: Could not connect to browsergrid server
+```
+→ Ensure the server is running: `browsergrid server status`
+
+**Session Creation Fails**
+```
+Error: Failed to create session
+```
+→ Check for available workers: `browsergrid worker list`
+→ Verify Docker is running if using local deployment
+
+**Performance Issues**
+```
+Browser response is slow
+```
+→ Check resource utilization: `browsergrid status --resources`
+→ Consider increasing worker resources: `browsergrid worker update --memory 4G`
+
+## Need Help?
+
+- [Documentation](https://docs.browsergrid.com)
+- [GitHub Issues](https://github.com/galad-ca/browsergrid/issues)
+- [Community Discord](https://discord.gg/browsergrid)
 
 ## Contributing
 
-We welcome contributions! Please refer to our [Contributing Guide](./.github/CONTRIBUTING.md) for more information.
+We welcome contributions! See our [Contributing Guide](./.github/CONTRIBUTING.md) to get started.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+Browsergrid is MIT licensed. See [LICENSE](./LICENSE) for details.
