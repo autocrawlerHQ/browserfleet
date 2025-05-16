@@ -2,6 +2,9 @@
 
 > Browser automation infrastructure made simple
 
+![image](https://github.com/user-attachments/assets/3409f88c-46db-4769-aed1-2502518b17fa)
+
+
 Browsergrid provides ready-to-use browser instances for test automation, web scraping, and development workflows. Stop struggling with browser setup and focus on what matters - your code.
 
 ## Why Browsergrid?
